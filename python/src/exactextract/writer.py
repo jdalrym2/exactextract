@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import pathlib
-from typing import Union, Dict, List
+from typing import Union, Dict, List, Optional
 
 from osgeo import gdal, ogr
 
@@ -34,7 +34,7 @@ class GDALWriter(_GDALWriter):
 
     def __init__(self, filename_or_ds: Union[str, pathlib.Path, gdal.Dataset,
                                              ogr.DataSource],
-                 input_ds: GDALDatasetWrapper, driver_name=None):
+                 input_ds: GDALDatasetWrapper, driver_name: Optional[str]=None):
         """
         Create exactextract GDALWriter object from Python OSGeo Dataset
         object or from file path.
@@ -42,7 +42,7 @@ class GDALWriter(_GDALWriter):
         Args:
             filename_or_ds (Union[str, pathlib.Path, gdal.Dataset, ogr.DataSource]): File path or OSGeo Dataset / DataSource
             input_ds (GDALDatasetWrapper): Reference dataset to work with. This will be used to get the correct field to write.
-            driver_name (str): GDAL driver name to override driver_name-from-filename inference
+            driver_name (Optional[str]): GDAL driver name to override driver_name-from-filename inference
 
         Raises:
             RuntimeError: If the file path was not found
@@ -60,5 +60,5 @@ class GDALWriter(_GDALWriter):
                                str(path.parent))
         path = path.resolve()
 
-        super().__init__(str(path), driver_name)
+        super().__init__(str(path), driver_name or '')
         self.copy_id_field(input_ds)
