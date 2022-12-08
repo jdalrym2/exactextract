@@ -113,6 +113,13 @@ class TestGDALWriter():
         gdal.Unlink(tmp_path)
         ds = None
 
+    def test_driver_name(self):
+        dsw = GDALDatasetWrapper(simple_gpkg_path)
+        tmp_path = '/vsimem/temp.fgb'
+        ds = GDALWriter(tmp_path, dsw, driver_name='FlatGeobuf')
+        del ds
+        gdal.Unlink(tmp_path)
+
     def test_invalid_ds(self):
         dsw = GDALDatasetWrapper(simple_gpkg_path)
         tmp_path = '/vsimem/temp.tif'
