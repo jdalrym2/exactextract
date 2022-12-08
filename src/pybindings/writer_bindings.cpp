@@ -25,7 +25,7 @@ namespace exactextract
             .def("finish", &OutputWriter::finish);
 
         py::class_<GDALWriter, OutputWriter>(m, "GDALWriter")
-            .def(py::init<const std::string &, const std::string &>(), py::arg("filename"), py::arg("driver_name") = "")
+            .def(py::init<const std::string &, const std::string &>(), py::arg("filename"), py::arg("driver_name_override") = "")
             .def_static("get_driver_name", &GDALWriter::get_driver_name, py::arg("filename"))
             .def("add_id_field", &GDALWriter::add_id_field, py::arg("field_name"), py::arg("field_type"))
             .def("copy_id_field", &GDALWriter::copy_id_field, py::arg("w"));

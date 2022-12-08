@@ -23,15 +23,15 @@
 #include <stdexcept>
 
 namespace exactextract {
-    GDALWriter::GDALWriter(const std::string & filename, const std::string & driver_name)
+    GDALWriter::GDALWriter(const std::string & filename, const std::string & driver_name_override)
     {
-        std::string local_driver_name;
-        if (driver_name.empty()) {
-            local_driver_name = get_driver_name(filename);
+        std::string driver_name;
+        if (driver_name_override.empty()) {
+            driver_name = get_driver_name(filename);
         } else {
-            local_driver_name = driver_name;
+            driver_name = driver_name_override;
         }
-        auto driver = GDALGetDriverByName(local_driver_name.c_str());
+        auto driver = GDALGetDriverByName(driver_name.c_str());
 
         if (driver == nullptr) {
             throw std::runtime_error("Could not load output driver: " + driver_name);
