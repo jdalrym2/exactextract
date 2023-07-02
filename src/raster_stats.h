@@ -11,6 +11,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/**
+ * @file raster_stats.h
+ * @version 0.1
+ * @date 2022-03-24
+ * 
+ * Changelog:
+ *  version 0.1
+ *      Nels Frazier (nfrazier@lynker.com) cache m_ci
+ *      Nels Frazier (nfrazier@lynker.com) add a private grid_meta struct
+ *      Nels Frazier (nfrazier@lynker.com) store the coverage fraction info when processed
+ *      Nels Frazier (nfrazier@lynker.com) add coverage_fraction and cell_number "stat" functions to expose the cached grid meta data
+ * 
+ */
+
 #ifndef EXACTEXTRACT_RASTER_STATS_H
 #define EXACTEXTRACT_RASTER_STATS_H
 
@@ -39,6 +53,7 @@ namespace exactextract {
         explicit RasterStats(bool store_values = false) :
                 m_min{std::numeric_limits<T>::max()},
                 m_max{std::numeric_limits<T>::lowest()},
+                m_ci{0},
                 m_sum_ciwi{0},
                 m_sum_ci{0},
                 m_sum_xici{0},
@@ -53,13 +68,24 @@ namespace exactextract {
             }
 
             const AbstractRaster<T>& rv = rvp ? *rvp : rast;
-
+            //Reserve memory for at most rows*cols
+            //may not need this much, depends on pct_cov
+            m_grid_meta.rows.reserve(rv.rows()*rv.cols());
+            m_grid_meta.cols.reserve(rv.rows()*rv.cols());
+            m_grid_meta.pct_cov.reserve(rv.rows()*rv.cols());
+            //Record the grid
+            m_grid_meta.grid = rv.grid();
             for (size_t i = 0; i < rv.rows(); i++) {
                 for (size_t j = 0; j < rv.cols(); j++) {
                     float pct_cov = intersection_percentages(i, j);
                     T val;
-                    if (pct_cov > 0 && rv.get(i, j, val)) {
-                        process_value(val, pct_cov, 1.0);
+                    if (pct_cov > 0){ //mark the coverage
+                        m_grid_meta.rows.push_back(i);
+                        m_grid_meta.cols.push_back(j);
+                        m_grid_meta.pct_cov.push_back(pct_cov);
+                        if(rv.get(i, j, val)) { //only process if value is not NA
+                            process_value(val, pct_cov, 1.0);
+                        }
                     }
                 }
             }
@@ -91,19 +117,30 @@ namespace exactextract {
 
             const AbstractRaster<T>& rv = rvp ? *rvp : rast;
             const AbstractRaster<T>& wv = wvp ? *wvp : weights;
-
+            //Reserve memory for at most rows*cols
+            //may not need this much, depends on pct_cov
+            m_grid_meta.rows.reserve(rv.rows()*rv.cols());
+            m_grid_meta.cols.reserve(rv.rows()*rv.cols());
+            m_grid_meta.pct_cov.reserve(rv.rows()*rv.cols());
+            //Record the grid
+            m_grid_meta.grid = rv.grid();
             for (size_t i = 0; i < rv.rows(); i++) {
                 for (size_t j = 0; j < rv.cols(); j++) {
                     float pct_cov = intersection_percentages(i, j);
                     T weight;
                     T val;
 
-                    if (pct_cov > 0 && rv.get(i, j, val)) {
-                        if (wv.get(i, j, weight)) {
-                            process_value(val, pct_cov, weight);
-                        } else {
-                            // Weight is NODATA, convert to NAN
-                            process_value(val, pct_cov, std::numeric_limits<double>::quiet_NaN());
+                    if (pct_cov > 0){
+                        m_grid_meta.rows.push_back(i);
+                        m_grid_meta.cols.push_back(j);
+                        m_grid_meta.pct_cov.push_back(pct_cov);
+                        if(rv.get(i, j, val)) {
+                            if (wv.get(i, j, weight)) {
+                                process_value(val, pct_cov, weight);
+                            } else {
+                                // Weight is NODATA, convert to NAN
+                                process_value(val, pct_cov, std::numeric_limits<double>::quiet_NaN());
+                            }
                         }
                     }
                 }
@@ -111,14 +148,17 @@ namespace exactextract {
         }
 
         void process_value(const T& val, float coverage, double weight) {
-            m_sum_ci += static_cast<double>(coverage);
-            m_sum_xici += val*static_cast<double>(coverage);
+            m_ci = static_cast<double>(coverage);
+            m_sum_ci += m_ci;
+            m_sum_xici += val*m_ci;
 
             m_variance.process(val, coverage);
 
-            double ciwi = static_cast<double>(coverage)*weight;
+            double ciwi = m_ci*weight;
             m_sum_ciwi += ciwi;
             m_sum_xiciwi += val * ciwi;
+
+            m_weighted_variance.process(val, ciwi);
 
             if (val < m_min) {
                 m_min = val;
@@ -130,10 +170,32 @@ namespace exactextract {
 
             if (m_store_values) {
                 auto& entry = m_freq[val];
-                entry.m_sum_ci += static_cast<double>(coverage);
+                entry.m_sum_ci += m_ci;
                 entry.m_sum_ciwi += ciwi;
                 m_quantiles.reset();
             }
+        }
+        
+        /**
+         * The percent of the cell covered by this polygon
+         */
+        std::vector<double> coverage_fraction() const {
+            return m_grid_meta.pct_cov;
+        }
+
+        /*
+        * The cell number of the raster the stat was extracted from
+        */
+        std::vector<double> cell_number (Grid<bounded_extent> global = Grid<bounded_extent>::make_empty() ) const {
+            std::vector<double> out(m_grid_meta.pct_cov.size());
+            for(size_t i = 0; i < m_grid_meta.pct_cov.size(); i++){
+                size_t cell_number = m_grid_meta.grid.map_to_grid_cell(m_grid_meta.rows[i], m_grid_meta.cols[i], global);
+                //THIS CAST isn't a good idea for large values of size_t
+                //but is a bit of a currrent limitation of the result_fetcher
+                //in operation.  Should probably template that...
+                out[i] = cell_number;
+            }
+            return out;
         }
 
         /**
@@ -311,6 +373,15 @@ namespace exactextract {
         }
 
         /**
+         * The population variance of raster cells touched
+         * by the polygon, taking into account cell coverage
+         * fractions and values of a weighting raster.
+         */
+        float weighted_variance() const {
+            return static_cast<float>(m_weighted_variance.variance());
+        }
+
+        /**
          * The population standard deviation of raster cells
          * touched by the polygon. Cell coverage fractions
          * are taken into account; values of a weighting
@@ -318,6 +389,15 @@ namespace exactextract {
          */
         float stdev() const {
             return static_cast<float>(m_variance.stdev());
+        }
+
+        /**
+         * The population standard deviation of raster cells
+         * touched by the polygon, taking into account cell
+         * coverage fractions and values of a weighting raster.
+         */
+        float weighted_stdev() const {
+            return static_cast<float>(m_weighted_variance.stdev());
         }
 
         /**
@@ -395,10 +475,20 @@ namespace exactextract {
         }
 
     private:
+        struct grid_meta{
+            std::vector<size_t> rows;
+            std::vector<size_t> cols;
+            std::vector<double> pct_cov;
+            Grid<bounded_extent> grid;
+            grid_meta():rows{}, cols{}, pct_cov{}, grid(Grid<bounded_extent>::make_empty()){}
+        };
+
         T m_min;
         T m_max;
 
+        grid_meta m_grid_meta;
         // ci: coverage fraction of pixel i
+        double m_ci;
         // wi: weight of pixel i
         // xi: value of pixel i
         double m_sum_ciwi;
@@ -406,6 +496,7 @@ namespace exactextract {
         double m_sum_xici;
         double m_sum_xiciwi;
         WestVariance m_variance;
+        WestVariance m_weighted_variance;
 
         mutable std::unique_ptr<WeightedQuantiles> m_quantiles;
 
