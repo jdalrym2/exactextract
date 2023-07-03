@@ -52,6 +52,14 @@ namespace exactextract
         }
     }
 
+    void MapWriter::write_coverage(const std::string &fid, const Raster<float> &raster, const Grid<bounded_extent> &common_grid)
+    {
+        (void)fid;
+        (void)raster;
+        (void)common_grid;
+        throw std::runtime_error("Unimplemented Error: MapWriter doesn't implement write_coverage, use 'write' instead");
+    };
+
     void MapWriter::clear()
     {
         m_dict.clear();

@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import Optional
 
-from _exactextract import StatDescriptor, Operation as _Operation
+from _exactextract import StatDescriptor, Operation as _Operation, Coverage as _Coverage
 
 from .raster import GDALRasterWrapper
 
 
 class Operation(_Operation):
-    """ Binding class around exactextract GDALRasterWrapper """
+    """ Binding class around exactextract Operation """
 
     def __init__(self,
                  stat_name: str,
@@ -47,3 +47,16 @@ class Operation(_Operation):
         """
         stat_desc = StatDescriptor.from_descriptor(desc)
         return cls(stat_desc.stat, stat_desc.name, raster, weights)
+
+
+class Coverage(_Coverage):
+    """ Binding class around exactextract Coverage """
+
+    def __init__(self, raster: GDALRasterWrapper):
+        """
+        Initialize a Coverage operation
+
+        Args:
+            raster (GDALRasterWrapper): Raster to compute over
+        """
+        super().__init__(raster)

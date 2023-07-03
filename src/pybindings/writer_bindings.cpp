@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "output_writer.h"
 #include "gdal_writer.h"
+#include "coverage_writer.h"
 #include "map_writer.h"
 #include "writer_bindings.h"
 
@@ -29,6 +30,9 @@ namespace exactextract
             .def_static("get_driver_name", &GDALWriter::get_driver_name, py::arg("filename"))
             .def("add_id_field", &GDALWriter::add_id_field, py::arg("field_name"), py::arg("field_type"))
             .def("copy_id_field", &GDALWriter::copy_id_field, py::arg("w"));
+
+        py::class_<CoverageWriter, GDALWriter>(m, "CoverageWriter")
+            .def(py::init<const std::string &>(), py::arg("filename"));
 
         py::class_<MapWriter, OutputWriter>(m, "MapWriter")
             .def(py::init<>())

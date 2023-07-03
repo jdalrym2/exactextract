@@ -24,6 +24,8 @@ namespace exactextract
 
         void write(const std::string &fid) override;
 
+        void write_coverage(const std::string &fid, const Raster<float> &raster, const Grid<bounded_extent> &common_grid) override;
+
         void clear();
 
         std::map<const std::string, std::list<double>> get_map();

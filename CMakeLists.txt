@@ -249,11 +249,15 @@ if (BUILD_PYTHON)
         src/gdal_writer.cpp
         src/map_writer.h
         src/map_writer.cpp
+        src/coverage_writer.h
+        src/coverage_writer.cpp
         src/processor.h
         src/feature_sequential_processor.cpp
         src/feature_sequential_processor.h
         src/raster_sequential_processor.cpp
-        src/raster_sequential_processor.h)
+        src/raster_sequential_processor.h
+        src/coverage_processor.h
+        src/coverage_processor.cpp)
 
     set(PYBIND_SOURCES
         ${WRAPPER_SOURCES}

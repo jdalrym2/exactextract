@@ -18,5 +18,8 @@ namespace exactextract
             .def_readonly("name", &Operation::name)
             .def_readonly("values", &Operation::values)
             .def_readonly("weights", &Operation::weights);
+
+        py::class_<Coverage, Operation>(m, "Coverage")
+            .def(py::init<RasterSource *>());
     }
 }
